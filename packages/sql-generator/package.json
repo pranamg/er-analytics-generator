@@ -1,0 +1,22 @@
+{
+  "name": "@er-analytics/sql-generator",
+  "version": "0.1.0",
+  "description": "Generate SQL DDL from database schemas",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@er-analytics/core": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.0",
+    "@types/node": "^22.9.0"
+  }
+}

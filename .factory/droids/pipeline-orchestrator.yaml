@@ -1,0 +1,45 @@
+name: pipeline-orchestrator
+description: |
+  Orchestrate the full ER-to-Analytics pipeline across all 11 stages.
+  Manages stage execution order, parallel processing, and error handling.
+
+context:
+  include:
+    - packages/*/src/index.ts
+    - packages/core/src/types/index.ts
+    - .factory/droids/*.yaml
+    - workflow-design-doc_v7.md
+  exclude:
+    - "**/node_modules/**"
+    - "**/dist/**"
+
+triggers:
+  - run full pipeline
+  - process er diagram end to end
+  - generate analytics platform
+  - execute all stages
+
+instructions: |
+  Pipeline execution order:
+  
+  SEQUENTIAL (must run in order):
+  1. er-parser: Parse ER diagram image
+  2. schema-processor: Validate and enhance schema
+  3. sql-generator: Generate DDL statements
+  4. data-generator: Create synthetic data
+  5. requirements-generator: Generate requirements doc
+  
+  PARALLEL (can run simultaneously after Stage 5):
+  6. prd-generator: Product requirements document
+  7. analytics-engine: Cohort and retention analysis
+  8. dashboard-builder: React dashboard components
+  9. powerbi-exporter: Power BI DAX measures
+  10. deploy-generator: Deployment scripts
+  
+  INDEPENDENT:
+  11. context-scraper: Business context research (optional)
+  
+  Error handling:
+  - Checkpoint after each stage
+  - Retry failed stages up to 3 times
+  - Allow partial completion with warnings

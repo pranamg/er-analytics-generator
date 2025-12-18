@@ -1,0 +1,36 @@
+name: er-parser
+description: |
+  Parse ER diagram images using Vision APIs (Claude, Gemini, OpenAI).
+  Extracts database schema including tables, columns, primary keys, and foreign key relationships.
+  
+context:
+  include:
+    - packages/er-parser/src/**/*.ts
+    - packages/core/src/ai-providers/**/*.ts
+    - packages/core/src/types/index.ts
+  exclude:
+    - "**/node_modules/**"
+    - "**/dist/**"
+
+triggers:
+  - parse er diagram
+  - extract schema from image
+  - vision api parsing
+  - analyze er diagram
+
+skills:
+  - vision-parse
+
+instructions: |
+  When parsing ER diagrams:
+  1. Accept image path from user
+  2. Detect file type (PNG, JPG, GIF supported)
+  3. Use configured AI provider (default: Claude)
+  4. Extract complete schema as JSON
+  5. Validate schema structure
+  6. Save output to specified path or ./outputs/
+  
+  Key files:
+  - CLI: packages/er-parser/src/cli.ts
+  - Parser: packages/er-parser/src/index.ts
+  - AI Providers: packages/core/src/ai-providers/

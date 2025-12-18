@@ -1,0 +1,35 @@
+{
+  "name": "@er-analytics/er-parser",
+  "version": "0.1.0",
+  "description": "Parse ER diagram images using Vision APIs",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "bin": {
+    "er-parse": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "test": "vitest run",
+    "lint": "eslint src --ext .ts",
+    "parse": "node --loader ts-node/esm src/cli.ts"
+  },
+  "dependencies": {
+    "@er-analytics/core": "workspace:*",
+    "chalk": "^5.3.0",
+    "commander": "^12.1.0",
+    "dotenv": "^16.4.5",
+    "mime-types": "^2.1.35",
+    "ora": "^8.1.0",
+    "sharp": "^0.34.5"
+  },
+  "devDependencies": {
+    "@types/mime-types": "^2.1.4",
+    "@types/node": "^22.9.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.0"
+  }
+}
