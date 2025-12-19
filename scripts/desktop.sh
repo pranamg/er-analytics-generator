@@ -1,5 +1,5 @@
 #!/bin/bash
-# Run the desktop app in development mode
+# Run the desktop app in development mode (web-based)
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
@@ -11,8 +11,13 @@ fi
 
 cd "$PROJECT_DIR"
 
-echo "Starting ER Analytics Generator Desktop App..."
+echo "Starting ER Analytics Generator..."
+echo ""
+echo "  Backend API: http://localhost:3001"
+echo "  Frontend UI: http://localhost:5173"
+echo ""
 echo "Open http://localhost:5173 in your browser"
 echo ""
 
-pnpm --filter @er-analytics/desktop dev
+# Run server + frontend concurrently
+pnpm --filter @er-analytics/desktop start

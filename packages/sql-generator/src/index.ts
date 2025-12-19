@@ -119,17 +119,105 @@ function mapDataType(type: string, dialect: DatabaseDialect): string {
 }
 
 export function generateViewSQL(schema: Schema): string {
-  const lines: string[] = ['-- Useful Views', ''];
+  const lines: string[] = [
+    '-- Database Views',
+    `-- Generated: ${new Date().toISOString()}`,
+    '',
+  ];
   
   const clientTable = schema.tables.find(t => 
     t.name.toLowerCase().includes('client') || t.name.toLowerCase().includes('customer')
   );
   
+  const invoiceTable = schema.tables.find(t =>
+    t.name.toLowerCase().includes('invoice')
+  );
+
+  const meetingTable = schema.tables.find(t =>
+    t.name.toLowerCase().includes('meeting')
+  );
+
+  const paymentTable = schema.tables.find(t =>
+    t.name.toLowerCase().includes('payment')
+  );
+
   if (clientTable) {
-    lines.push(`CREATE VIEW client_summary AS`);
+    lines.push('-- Client summary view');
+    lines.push(`CREATE OR REPLACE VIEW client_summary AS`);
     lines.push(`SELECT * FROM ${clientTable.name};`);
     lines.push('');
   }
   
+  if (invoiceTable && clientTable) {
+    lines.push('-- Invoice summary with client info');
+    lines.push(`CREATE OR REPLACE VIEW invoice_summary AS`);
+    lines.push(`SELECT i.*, c.* FROM ${invoiceTable.name} i`);
+    lines.push(`LEFT JOIN ${clientTable.name} c ON i.client_id = c.client_id;`);
+    lines.push('');
+  }
+
+  if (meetingTable) {
+    lines.push('-- Recent meetings view');
+    lines.push(`CREATE OR REPLACE VIEW recent_meetings AS`);
+    lines.push(`SELECT * FROM ${meetingTable.name}`);
+    lines.push(`ORDER BY start_date_time DESC LIMIT 100;`);
+    lines.push('');
+  }
+
+  if (paymentTable && invoiceTable) {
+    lines.push('-- Payment status view');
+    lines.push(`CREATE OR REPLACE VIEW payment_status AS`);
+    lines.push(`SELECT i.*, COALESCE(SUM(p.amount), 0) as total_paid,`);
+    lines.push(`       i.amount - COALESCE(SUM(p.amount), 0) as balance_due`);
+    lines.push(`FROM ${invoiceTable.name} i`);
+    lines.push(`LEFT JOIN ${paymentTable.name} p ON i.invoice_id = p.invoice_id`);
+    lines.push(`GROUP BY i.invoice_id;`);
+    lines.push('');
+  }
+
+  // Revenue summary view
+  if (clientTable && invoiceTable) {
+    lines.push('-- Revenue by client view');
+    lines.push(`CREATE OR REPLACE VIEW revenue_by_client AS`);
+    lines.push(`SELECT c.client_id, c.client_name,`);
+    lines.push(`       COUNT(i.invoice_id) as invoice_count,`);
+    lines.push(`       SUM(i.amount) as total_revenue`);
+    lines.push(`FROM ${clientTable.name} c`);
+    lines.push(`LEFT JOIN ${invoiceTable.name} i ON c.client_id = i.client_id`);
+    lines.push(`GROUP BY c.client_id, c.client_name;`);
+    lines.push('');
+  }
+
   return lines.join('\n');
+}
+
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+
+export interface SQLOutputFiles {
+  'schema.sql': string;
+  'schema_postgresql.sql': string;
+  'schema_mysql.sql': string;
+  'views.sql': string;
+}
+
+export function generateAllSQLFiles(schema: Schema): SQLOutputFiles {
+  return {
+    'schema.sql': generateSQL(schema, { dialect: 'postgresql', includeIndexes: true }),
+    'schema_postgresql.sql': generateSQL(schema, { dialect: 'postgresql', includeIndexes: true }),
+    'schema_mysql.sql': generateSQL(schema, { dialect: 'mysql', includeIndexes: true }),
+    'views.sql': generateViewSQL(schema),
+  };
+}
+
+export async function saveAllSQLFiles(schema: Schema, outputDir: string): Promise<void> {
+  const files = generateAllSQLFiles(schema);
+  
+  if (!fs.existsSync(outputDir)) {
+    fs.mkdirSync(outputDir, { recursive: true });
+  }
+
+  for (const [filename, content] of Object.entries(files)) {
+    fs.writeFileSync(path.join(outputDir, filename), content);
+  }
 }

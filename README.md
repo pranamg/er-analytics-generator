@@ -40,6 +40,7 @@ cp .env.example .env
 
 | Stage | Package | Description |
 |-------|---------|-------------|
+| 0 | `core (archiver)` | Archive previous outputs and prepare workspace |
 | 1 | `er-parser` | Parse ER diagram images using Vision APIs |
 | 2 | `schema-processor` | Validate and enhance schema, build dependency graph |
 | 3 | `sql-generator` | Generate DDL for PostgreSQL/MySQL |
@@ -54,19 +55,33 @@ cp .env.example .env
 ## Generated Outputs
 
 ```
+inputs/                      # Source ER diagrams (copied during pipeline)
+├── advertising_agencies_model.gif
+└── ...
+
 outputs/
+├── .run_metadata.json       # Current run info (input file, timestamp, provider)
 ├── schema.json              # Parsed ER schema (JSON)
 ├── schema_processed.json    # Enhanced schema with metadata
 ├── schema.sql               # PostgreSQL DDL
-├── data/                    # Synthetic data (11 CSV files)
+├── schema_postgresql.sql    # PostgreSQL-specific DDL
+├── schema_mysql.sql         # MySQL-specific DDL
+├── views.sql                # Generated SQL views
+├── archive/                 # Previous run archives (auto-created)
+│   ├── README.md            # Instructions for viewing archives
+│   └── *.tar                # Timestamped archives
+├── data/                    # Synthetic data (CSV files per table)
 │   ├── Agencies.csv
 │   ├── Clients.csv
-│   ├── Invoices.csv
+│   └── ...
+├── analytics/               # Cohort analysis results
+│   ├── analytics.json
 │   └── ...
 ├── docs/
 │   ├── requirements.txt     # Stakeholder requirements
 │   └── PRD.txt              # Product Requirements Document
 ├── dashboards/
+│   ├── README.md            # Usage instructions for React components
 │   ├── ExecutiveDashboard.tsx
 │   └── FinanceDashboard.tsx
 ├── powerbi/
@@ -79,6 +94,8 @@ outputs/
     └── ...
 ```
 
+**Download Naming**: Exported ZIP files are named based on the input file (e.g., `advertising_agencies_output.zip`).
+
 ## Desktop App
 
 The desktop app provides a visual interface for running the pipeline and previewing outputs.
@@ -88,7 +105,11 @@ The desktop app provides a visual interface for running the pipeline and preview
 # Opens at http://localhost:5173
 ```
 
-**Pipeline View**: Configure image, provider, and run pipeline with progress tracking
+**Pipeline View**: 
+- Browse and upload ER diagram images directly from your computer
+- Choose AI provider (Claude/Gemini/OpenAI)
+- Run pipeline with visual progress indicators for all 11 stages
+- Previous outputs are automatically archived before each run
 
 **Preview View**: Browse all outputs with interactive charts and visualizations
 

@@ -8,27 +8,39 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "electron:dev": "concurrently \"vite\" \"electron .\"",
-    "electron:build": "vite build && electron-builder",
+    "server": "npx tsx server.ts",
+    "start": "concurrently \"npx tsx server.ts\" \"vite\"",
+    "electron:compile": "tsc -p tsconfig.node.json",
+    "electron:dev": "pnpm electron:compile && concurrently \"vite\" \"electron .\"",
+    "electron:build": "pnpm electron:compile && vite build && electron-builder",
     "clean": "rm -rf dist"
   },
   "dependencies": {
+    "@er-analytics/analytics-engine": "workspace:*",
     "@er-analytics/core": "workspace:*",
+    "@er-analytics/dashboard-builder": "workspace:*",
+    "@er-analytics/data-generator": "workspace:*",
+    "@er-analytics/deploy-generator": "workspace:*",
     "@er-analytics/er-parser": "workspace:*",
+    "@er-analytics/powerbi-exporter": "workspace:*",
+    "@er-analytics/prd-generator": "workspace:*",
+    "@er-analytics/requirements-generator": "workspace:*",
     "@er-analytics/schema-processor": "workspace:*",
     "@er-analytics/sql-generator": "workspace:*",
-    "@er-analytics/data-generator": "workspace:*",
-    "@er-analytics/requirements-generator": "workspace:*",
-    "@er-analytics/prd-generator": "workspace:*",
-    "@er-analytics/analytics-engine": "workspace:*",
-    "@er-analytics/dashboard-builder": "workspace:*",
-    "@er-analytics/powerbi-exporter": "workspace:*",
-    "@er-analytics/deploy-generator": "workspace:*",
+    "@types/multer": "^2.0.0",
+    "archiver": "^7.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^4.21.0",
+    "multer": "^2.0.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "recharts": "^2.13.0"
   },
   "devDependencies": {
+    "@types/archiver": "^6.0.0",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
     "@types/react": "^18.3.0",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.0",
@@ -38,6 +50,7 @@
     "electron-builder": "^25.0.0",
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.14",
+    "tsx": "^4.19.0",
     "typescript": "^5.6.3",
     "vite": "^5.4.0"
   },
@@ -51,13 +64,22 @@
       "dist/**/*"
     ],
     "linux": {
-      "target": ["AppImage", "deb"]
+      "target": [
+        "AppImage",
+        "deb"
+      ]
     },
     "win": {
-      "target": ["nsis", "portable"]
+      "target": [
+        "nsis",
+        "portable"
+      ]
     },
     "mac": {
-      "target": ["dmg", "zip"]
+      "target": [
+        "dmg",
+        "zip"
+      ]
     }
   }
 }
