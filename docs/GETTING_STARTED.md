@@ -46,14 +46,18 @@ node packages/er-parser/dist/cli.js <image-path> -p gemini -o outputs/schema.jso
 # Generate everything from an ER diagram
 ./scripts/pipeline.sh examples/advertising_agencies_model.gif
 
-# This will generate:
+# This will generate (after archiving previous outputs):
+# - inputs/<image>               (copy of source ER diagram)
+# - outputs/.run_metadata.json   (run info: input, timestamp, provider)
 # - outputs/schema.json          (parsed schema)
 # - outputs/schema.sql           (DDL statements)
 # - outputs/data/*.csv           (synthetic data)
+# - outputs/analytics/           (cohort analysis results)
 # - outputs/docs/                (requirements, PRD)
-# - outputs/dashboards/          (React components)
+# - outputs/dashboards/          (React components with README)
 # - outputs/powerbi/             (DAX measures)
 # - outputs/deploy/              (deployment scripts)
+# - outputs/archive/             (archives from previous runs)
 ```
 
 ## CLI Options
@@ -131,10 +135,11 @@ pnpm --filter @er-analytics/desktop dev
 The app has two views:
 
 **Pipeline View:**
-- Select ER diagram image
+- Browse and upload ER diagram images directly from your computer
 - Choose AI provider (Claude/Gemini/OpenAI)
-- Configure output directory
-- Run pipeline with visual progress indicators
+- Run full 11-stage pipeline with visual progress indicators
+- Previous outputs are automatically archived before each run
+- Archives are stored in `outputs/archive/` with timestamped names
 
 **Output Preview View (click "View Outputs"):**
 
@@ -158,3 +163,41 @@ The Preview shows:
 - 📋 Requirements by stakeholder level
 - 📄 SQL with syntax highlighting
 - 🚀 Deployment checklist
+
+## Downloading Outputs
+
+The desktop app and API provide download options with **unique filenames** based on your input:
+
+| Input File | Download All | Download Folder |
+|------------|--------------|-----------------|
+| `advertising_agencies_model.gif` | `advertising_agencies_output.zip` | `advertising_agencies_data.zip` |
+| `my_schema.png` | `my_schema_output.zip` | `my_schema_dashboards.zip` |
+
+## Working with Archives
+
+Previous outputs are automatically archived before each new pipeline run. Archives are stored in `outputs/archive/`.
+
+### Viewing Archive Contents
+
+```bash
+# List files in a tar archive
+tar -tvf outputs/archive/advertising_agencies_20251219_161617.tar
+
+# Extract specific file from archive
+tar -xvf outputs/archive/advertising_agencies_20251219_161617.tar schema.json
+
+# Extract entire archive
+tar -xvf outputs/archive/advertising_agencies_20251219_161617.tar -C /tmp/restored/
+```
+
+See `outputs/archive/README.md` for more detailed instructions.
+
+## Using Generated Dashboards
+
+The React dashboard components in `outputs/dashboards/` can be integrated into your projects:
+
+1. Copy the `.tsx` files to your React project
+2. Install dependencies: `npm install recharts`
+3. Import and use: `import { ExecutiveDashboard } from './dashboards/ExecutiveDashboard'`
+
+See `outputs/dashboards/README.md` for detailed usage instructions and customization tips.

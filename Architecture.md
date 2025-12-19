@@ -20,6 +20,7 @@ The system implements an **11-stage transformation pipeline** that sequentially 
 
 | Stage | Package | Purpose |
 |-------|---------|---------|
+| 0 | core (archiver) | Archive previous outputs and prepare workspace |
 | 1 | er-parser | Vision AI parsing of ER diagrams |
 | 2 | schema-processor | Schema validation and enhancement |
 | 3 | sql-generator | DDL generation (PostgreSQL/MySQL/SQLite) |
@@ -30,7 +31,8 @@ The system implements an **11-stage transformation pipeline** that sequentially 
 | 8 | dashboard-builder | React dashboard components |
 | 9 | powerbi-exporter | Power BI resources (DAX, M code) |
 | 10 | deploy-generator | Deployment scripts |
-| 11 | desktop (app) | Interactive preview application |
+| - | desktop (app) | Interactive preview application |
+| - | server (in desktop) | REST API for pipeline execution and downloads |
 
 ### 3.1.3 Layered Architecture
 The codebase follows a three-tier layered structure:
@@ -43,6 +45,26 @@ The codebase follows a three-tier layered structure:
 
 ### 3.1.4 Multi-Provider Abstraction
 The system supports multiple GenAI providers (Claude, Gemini, OpenAI) through a unified interface, allowing runtime provider switching without code changes.
+
+### 3.1.5 Server API Architecture
+The desktop application includes an Express-based REST API server (`apps/desktop/server.ts`) that provides:
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/check-schema` | GET | Check if cached schema exists |
+| `/api/outputs` | GET | Retrieve all generated outputs with CSV row counts |
+| `/api/inputs` | GET | List available input images in inputs folder |
+| `/api/upload-and-run` | POST | Upload image and run full pipeline (multipart/form-data) |
+| `/api/run-pipeline` | POST | Run pipeline with existing image path |
+| `/api/regenerate` | POST | Regenerate all pipeline stages from cached schema |
+| `/api/archive` | POST | Archive current outputs before new run |
+| `/api/download/file/*` | GET | Download individual file |
+| `/api/download/folder/:folder` | GET | Download folder as ZIP (with input-based naming) |
+| `/api/download/all` | GET | Download all outputs as ZIP (with input-based naming) |
+| `/api/business-context` | POST | Save business context metadata |
+| `/api/outputs-path` | GET | Get outputs directory path |
+
+**Download Naming**: ZIP files are named based on the input filename (e.g., `advertising_agencies_output.zip` for `advertising_agencies_model.gif`)
 
 ---
 
@@ -208,7 +230,8 @@ graph TB
 
     subgraph "Applications"
         CLI[CLI Tool]
-        DESKTOP[Desktop App<br/>Electron]
+        DESKTOP[Desktop App<br/>Electron + React]
+        SERVER[API Server<br/>Express REST]
     end
 
     subgraph "Outputs"
@@ -256,6 +279,8 @@ graph TB
 
     CLI --> PARSE
     DESKTOP --> PARSE
+    SERVER --> PARSE
+    DESKTOP --> SERVER
 ```
 
 ### 3.4.2 Data Flow Through the System
@@ -358,7 +383,9 @@ graph TD
     end
 
     subgraph "Application Layer"
-        DESKTOP["apps/desktop<br/>━━━━━━━━━━━━━━━<br/>• Electron App<br/>• Interactive Preview"]
+        DESKTOP["apps/desktop<br/>━━━━━━━━━━━━━━━<br/>• Electron + React App<br/>• Interactive Preview<br/>• Vite + Tailwind"]
+        
+        SERVER["apps/desktop/server.ts<br/>━━━━━━━━━━━━━━━<br/>• Express REST API<br/>• Pipeline Orchestration<br/>• File Downloads"]
     end
 
     %% Dependencies
@@ -388,7 +415,7 @@ graph TD
     class CORE core
     class PARSER,SCHPROC,SQLGEN,DATAGEN,ANALYTICS process
     class REQGEN,PRDGEN,DASHGEN,PBIEXP,DEPLOY output
-    class DESKTOP app
+    class DESKTOP,SERVER app
 ```
 
 ---
@@ -404,6 +431,8 @@ graph TD
 | **Standalone Analytics Engine** | Pure algorithms without external dependencies for testability |
 | **Code Generation over Runtime** | Dashboard components generated as source code for customization |
 | **Multi-dialect SQL** | Single codebase supports PostgreSQL, MySQL, and SQLite |
+| **REST API Server** | Express server enables web UI integration and programmatic access |
+| **Vite + React + Tailwind** | Modern frontend stack for interactive preview with hot reload |
 
 ---
 
@@ -414,3 +443,81 @@ graph TD
 3. **New Dashboard Types**: Add configuration to `getDefaultDashboardConfigs()`
 4. **Custom Pipeline Stages**: Create new package following existing conventions
 5. **Additional Export Formats**: Add exporters following `powerbi-exporter` pattern
+
+---
+
+## 3.7 Output Structure
+
+The system generates outputs to the `outputs/` directory with the following structure:
+
+```
+project-root/
+├── inputs/                  # Source ER diagram images
+│   ├── .gitkeep
+│   └── *.gif/png/jpg        # Uploaded/copied input images
+│
+└── outputs/
+    ├── .run_metadata.json   # Current run metadata (input file, timestamp, provider)
+    ├── schema.json          # Raw parsed schema from Vision API
+    ├── schema_processed.json # Validated and enhanced schema
+    ├── schema.sql           # Default SQL DDL (PostgreSQL)
+    ├── schema_postgresql.sql # PostgreSQL-specific DDL
+    ├── schema_mysql.sql     # MySQL-specific DDL
+    ├── views.sql            # Generated SQL views
+    ├── analytics/           # Cohort analysis results
+    │   ├── analytics.json   # Complete analytics data
+    │   ├── cohort_analysis.json
+    │   ├── retention_curves.json
+    │   ├── revenue_cohorts.json
+    │   └── churn_risk_scores.json
+    ├── archive/             # Archived outputs from previous runs
+    │   ├── README.md        # Instructions for viewing tar/zip files
+    │   └── *.tar/*.zip      # Timestamped archives
+    ├── dashboards/          # React dashboard components
+    │   ├── README.md        # Usage instructions for TSX components
+    │   ├── ExecutiveDashboard.tsx
+    │   ├── FinanceDashboard.tsx
+    │   ├── OperationsDashboard.tsx
+    │   └── SalesDashboard.tsx
+    ├── data/                # Generated synthetic data
+    │   └── *.csv            # One CSV per table
+    ├── deploy/              # Deployment scripts
+    │   ├── deploy.sh
+    │   ├── import_data.sh
+    │   ├── setup_database.sh
+    │   └── ...
+    ├── docs/                # Generated documentation
+    │   ├── requirements.json
+    │   ├── requirements.txt
+    │   ├── PRD.json
+    │   ├── PRD.txt
+    │   ├── PRD.html
+    │   └── business_context.md
+    └── powerbi/             # Power BI resources
+        ├── power_bi_measures.dax
+        ├── power_bi_date_table.m
+        ├── power_bi_relationships.txt
+        └── power_bi_instructions.md
+```
+
+### ZIP Export Structure
+When downloading all outputs via `/api/download/all`, files are organized with numbered prefixes and named based on the input file (e.g., `advertising_agencies_output.zip`):
+
+| Source | ZIP Destination |
+|--------|-----------------|
+| `inputs/` | `00-inputs/` |
+| `schema.json`, `schema_processed.json` | `01-schema/` |
+| `*.sql` files | `02-database/` |
+| `data/` | `03-data/` |
+| `docs/` | `04-docs/` |
+| `analytics/` | `05-analytics/` |
+| `dashboards/` | `06-dashboards/` |
+| `powerbi/` | `07-powerbi/` |
+| `deploy/` | `08-deploy/` |
+
+### Archive Naming Convention
+Archives are created automatically before each pipeline run with the format:
+```
+{input_basename}_{YYYYMMDD}_{HHMMSS}.tar
+```
+Example: `advertising_agencies_20251219_161617.tar`

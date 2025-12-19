@@ -16,20 +16,23 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
+    "@er-analytics/analytics-engine": "workspace:*",
     "@er-analytics/core": "workspace:*",
+    "@er-analytics/dashboard-builder": "workspace:*",
+    "@er-analytics/data-generator": "workspace:*",
+    "@er-analytics/deploy-generator": "workspace:*",
     "@er-analytics/er-parser": "workspace:*",
+    "@er-analytics/powerbi-exporter": "workspace:*",
+    "@er-analytics/prd-generator": "workspace:*",
+    "@er-analytics/requirements-generator": "workspace:*",
     "@er-analytics/schema-processor": "workspace:*",
     "@er-analytics/sql-generator": "workspace:*",
-    "@er-analytics/data-generator": "workspace:*",
-    "@er-analytics/requirements-generator": "workspace:*",
-    "@er-analytics/prd-generator": "workspace:*",
-    "@er-analytics/analytics-engine": "workspace:*",
-    "@er-analytics/dashboard-builder": "workspace:*",
-    "@er-analytics/powerbi-exporter": "workspace:*",
-    "@er-analytics/deploy-generator": "workspace:*",
+    "@types/multer": "^2.0.0",
     "archiver": "^7.0.0",
     "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
     "express": "^4.21.0",
+    "multer": "^2.0.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "recharts": "^2.13.0"
@@ -61,13 +64,22 @@
       "dist/**/*"
     ],
     "linux": {
-      "target": ["AppImage", "deb"]
+      "target": [
+        "AppImage",
+        "deb"
+      ]
     },
     "win": {
-      "target": ["nsis", "portable"]
+      "target": [
+        "nsis",
+        "portable"
+      ]
     },
     "mac": {
-      "target": ["dmg", "zip"]
+      "target": [
+        "dmg",
+        "zip"
+      ]
     }
   }
 }

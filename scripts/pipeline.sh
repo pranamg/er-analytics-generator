@@ -47,8 +47,29 @@ echo ""
 
 cd "$PROJECT_DIR"
 
+# Stage 0: Archive and clean previous outputs
+echo "[Stage 0/10] Archiving previous outputs..."
+node --input-type=module -e "
+import { archiveOutputs, clearOutputDirectories } from './packages/core/dist/index.js';
+const result = await archiveOutputs('$OUTPUT_DIR', '$IMAGE');
+if (result) {
+  console.log('  Archived', result.filesArchived, 'files to:', result.archivePath);
+  clearOutputDirectories('$OUTPUT_DIR');
+  console.log('  Cleared output directories');
+} else {
+  console.log('  No previous outputs to archive');
+}
+"
+echo ""
+
 # Create output directories
-mkdir -p "$OUTPUT_DIR"/{data,docs,dashboards,powerbi,deploy}
+mkdir -p "$OUTPUT_DIR"/{data,docs,dashboards,powerbi,deploy,analytics}
+mkdir -p "$PROJECT_DIR/inputs"
+
+# Copy input image to inputs folder for export
+cp "$IMAGE" "$PROJECT_DIR/inputs/"
+echo "Input image copied to: $PROJECT_DIR/inputs/$(basename "$IMAGE")"
+echo ""
 
 # Stage 1: Parse ER Diagram
 echo "[Stage 1/10] Parsing ER diagram..."
@@ -121,8 +142,31 @@ console.log('  PRD saved to: $OUTPUT_DIR/docs/');
 "
 echo ""
 
-# Stage 7: Analytics Engine (placeholder - needs data)
-echo "[Stage 7/10] Analytics engine ready (run after data import)"
+# Stage 7: Run Analytics Engine
+echo "[Stage 7/10] Running analytics engine..."
+node --input-type=module -e "
+import fs from 'fs';
+import { performCohortAnalysis, saveAnalyticsResults } from './packages/analytics-engine/dist/index.js';
+
+// Generate sample entities and activities for analytics
+const entities = Array.from({ length: 50 }, (_, i) => ({
+  id: i + 1,
+  name: 'Entity ' + (i + 1),
+  signup_date: new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+}));
+
+const activities = Array.from({ length: 200 }, (_, i) => ({
+  entity_id: Math.floor(Math.random() * 50) + 1,
+  date: new Date(Date.now() - Math.random() * 180 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+  amount: Math.floor(Math.random() * 50000) + 1000,
+}));
+
+const analyticsResult = performCohortAnalysis(entities, activities);
+await saveAnalyticsResults(analyticsResult, '$OUTPUT_DIR/analytics/');
+console.log('  Analytics saved to: $OUTPUT_DIR/analytics/');
+console.log('  - Cohorts:', analyticsResult.cohortAnalysis.cohorts.length);
+console.log('  - Churn risk entities:', analyticsResult.churnRisk.filter(c => c.riskScore > 0.5).length);
+"
 echo ""
 
 # Stage 8: Generate Dashboard Components

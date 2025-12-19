@@ -56,7 +56,15 @@ export async function archiveOutputs(
     }
   }
 
-  const rootFiles = ['schema.json', 'schema.sql', 'schema_processed.json'];
+  // Include inputs folder if it exists (contains source ER diagram)
+  const inputsDir = path.join(path.dirname(resolvedOutputDir), 'inputs');
+  if (fs.existsSync(inputsDir)) {
+    const destDir = path.join(tempDir, 'inputs');
+    fs.mkdirSync(destDir, { recursive: true });
+    filesArchived += copyDirContents(inputsDir, destDir);
+  }
+
+  const rootFiles = ['schema.json', 'schema.sql', 'schema_processed.json', 'schema_postgresql.sql', 'schema_mysql.sql', 'views.sql'];
   for (const file of rootFiles) {
     const srcFile = path.join(resolvedOutputDir, file);
     if (fs.existsSync(srcFile)) {
@@ -105,7 +113,7 @@ export function clearOutputDirectories(outputDir: string): void {
     }
   }
 
-  const rootFiles = ['schema.json', 'schema.sql', 'schema_processed.json'];
+  const rootFiles = ['schema.json', 'schema.sql', 'schema_processed.json', 'schema_postgresql.sql', 'schema_mysql.sql', 'views.sql'];
   for (const file of rootFiles) {
     const filePath = path.join(resolvedOutputDir, file);
     if (fs.existsSync(filePath)) {

@@ -51,14 +51,16 @@ function App() {
     checkSchema();
   }, []);
 
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
   const handleFileSelect = async () => {
-    // In Electron, this would use dialog.showOpenDialog
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
     input.onchange = (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (file) {
+        setSelectedFile(file);
         setImagePath(file.name);
       }
     };
@@ -66,39 +68,70 @@ function App() {
   };
 
   const runPipeline = async () => {
+    if (!selectedFile && !imagePath) {
+      console.error('No image selected');
+      return;
+    }
+
     setIsRunning(true);
     
-    // Stage 0: Archive previous outputs
-    setStages(prev => prev.map((s, idx) => 
-      idx === 0 ? { ...s, status: 'running' } : s
-    ));
+    // Reset all stages to pending
+    setStages(prev => prev.map(s => ({ ...s, status: 'pending' })));
     
+    // Mark all stages as running for visual feedback
+    for (let i = 0; i <= 10; i++) {
+      setStages(prev => prev.map(s => s.id === i ? { ...s, status: 'running' } : s));
+    }
+
     try {
-      if (window.electronAPI?.archiveOutputs) {
-        const archiveResult = await window.electronAPI.archiveOutputs(imagePath || null);
-        if (archiveResult.archived) {
-          console.log(`Archived ${archiveResult.filesArchived} files to ${archiveResult.archivePath}`);
+      let response;
+      
+      if (selectedFile) {
+        // Upload file and run pipeline
+        const formData = new FormData();
+        formData.append('image', selectedFile);
+        formData.append('provider', provider);
+        
+        response = await fetch(`${API_BASE}/upload-and-run`, {
+          method: 'POST',
+          body: formData,
+        });
+      } else {
+        // Use existing path (for files already in inputs/ or examples/)
+        response = await fetch(`${API_BASE}/run-pipeline`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imagePath, provider }),
+        });
+      }
+      
+      const result = await response.json();
+      
+      if (result.success || result.results) {
+        console.log(result.summary || 'Pipeline completed');
+        // Mark stages based on results
+        if (result.results) {
+          setStages(prev => prev.map(s => {
+            const stageResult = result.results?.find((r: { stage: number }) => r.stage === s.id);
+            if (stageResult) {
+              return { ...s, status: stageResult.success ? 'completed' : 'failed' };
+            }
+            return { ...s, status: 'pending' };
+          }));
         }
+        // Check for cached schema after successful run
+        setHasCachedSchema(true);
+      } else {
+        console.error('Pipeline failed:', result.error);
+        // Mark all running stages as failed
+        setStages(prev => prev.map(s => s.status === 'running' ? { ...s, status: 'failed' } : s));
       }
     } catch (err) {
-      console.error('Archive failed:', err);
+      console.error('Pipeline error:', err);
+      setStages(prev => prev.map(s => s.status === 'running' ? { ...s, status: 'failed' } : s));
+    } finally {
+      setIsRunning(false);
     }
-    
-    setStages(prev => prev.map((s, idx) => 
-      idx === 0 ? { ...s, status: 'completed' } : s
-    ));
-    
-    // Run remaining pipeline stages
-    for (let i = 1; i < stages.length; i++) {
-      setStages(prev => prev.map((s, idx) => 
-        idx === i ? { ...s, status: 'running' } : s
-      ));
-      await new Promise(r => setTimeout(r, 500));
-      setStages(prev => prev.map((s, idx) => 
-        idx === i ? { ...s, status: 'completed' } : s
-      ));
-    }
-    setIsRunning(false);
   };
 
   const regenerateFromSchema = async () => {

@@ -86,7 +86,6 @@ const defaultBusinessContext: BusinessContextForm = {
 
 export default function Preview() {
   const [activeTab, setActiveTab] = useState('schema');
-  const [activeDashboard, setActiveDashboard] = useState('executive');
   const [loading, setLoading] = useState(true);
   const [outputData, setOutputData] = useState<OutputData | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -106,14 +105,27 @@ export default function Preview() {
       if (response.ok) {
         const data = await response.json();
         // Transform the data to match expected format
+        // Get analytics from analytics.json which has all the data
+        const analyticsData = data.analytics?.['analytics.json'] || data.analytics?.['cohort_analysis.json'];
+        
+        // Extract row counts from CSV files (server now returns { content, rowCount } for CSVs)
+        const dataFiles = data.data 
+          ? Object.entries(data.data).map(([name, fileData]) => ({ 
+              name, 
+              rowCount: typeof fileData === 'object' && fileData !== null && 'rowCount' in fileData 
+                ? (fileData as { rowCount: number }).rowCount 
+                : 0 
+            }))
+          : [];
+        
         const transformedData: OutputData = {
           schema: data['schema.json'],
           sql: data['schema.sql'],
           processedSchema: data['schema_processed.json'],
           requirements: data.docs?.['requirements.json'],
           prd: data.docs?.['PRD.json'],
-          analytics: data.analytics?.['cohort_analysis.json'] || data.analytics?.['analytics.json'],
-          dataFiles: data.data ? Object.keys(data.data).map(name => ({ name, rowCount: 0 })) : [],
+          analytics: analyticsData,
+          dataFiles,
           dashboards: data.dashboards ? Object.keys(data.dashboards).map(name => ({ name, file: name })) : [],
           powerbi: data.powerbi,
           deployScripts: data.deploy ? Object.keys(data.deploy).map(name => ({ name, desc: name })) : [],
@@ -594,20 +606,11 @@ export default function Preview() {
               <div className="space-y-6">
                 {outputData?.dashboards && outputData.dashboards.length > 0 ? (
                   <>
-                    <div className="flex gap-4 mb-6">
-                      {outputData.dashboards.map(dash => (
-                        <button
-                          key={dash.name}
-                          onClick={() => setActiveDashboard(dash.name.toLowerCase().replace('dashboard', ''))}
-                          className={`px-6 py-3 rounded-lg font-medium capitalize ${
-                            activeDashboard === dash.name.toLowerCase().replace('dashboard', '')
-                              ? 'bg-blue-600 text-white'
-                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                          }`}
-                        >
-                          {dash.name.replace('Dashboard', '')}
-                        </button>
-                      ))}
+                    <div className="flex justify-between items-center">
+                      <h2 className="text-2xl font-bold text-gray-800">React Dashboard Components</h2>
+                      <button onClick={() => downloadFolder('dashboards')} className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                        📥 Download Dashboards
+                      </button>
                     </div>
                     <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                       <h3 className="font-semibold text-green-900 mb-2">✓ Dashboard Components Generated</h3>
@@ -625,6 +628,20 @@ export default function Preview() {
                           </div>
                         </div>
                       ))}
+                    </div>
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+                      <h3 className="font-semibold text-blue-900 mb-3">📖 How to Use These Dashboard Components</h3>
+                      <div className="text-blue-800 text-sm space-y-3">
+                        <p><strong>These are React/TypeScript (.tsx) components.</strong> To view and use them:</p>
+                        <ol className="list-decimal list-inside space-y-2 ml-2">
+                          <li><strong>Create a React project:</strong> Run <code className="bg-blue-100 px-1 rounded">npx create-react-app my-dashboard --template typescript</code></li>
+                          <li><strong>Install dependencies:</strong> <code className="bg-blue-100 px-1 rounded">npm install recharts</code></li>
+                          <li><strong>Copy the .tsx files</strong> to your <code className="bg-blue-100 px-1 rounded">src/components/</code> folder</li>
+                          <li><strong>Import and use</strong> in your App.tsx: <code className="bg-blue-100 px-1 rounded">{'import ExecutiveDashboard from "./components/ExecutiveDashboard"'}</code></li>
+                          <li><strong>Run the app:</strong> <code className="bg-blue-100 px-1 rounded">npm start</code></li>
+                        </ol>
+                        <p className="mt-3 text-xs text-blue-600">A README.md file is included in the download with detailed instructions.</p>
+                      </div>
                     </div>
                   </>
                 ) : (
