@@ -24,17 +24,21 @@ export async function generateData(
   }
 
   const data: GeneratedData = {};
-  const defaultRowCounts: Record<string, number> = {
-    ref_: 5,
-    default: 10,
+  
+  const getDefaultRowCount = (tableName: string): number => {
+    const name = tableName.toLowerCase();
+    if (name.startsWith('ref_')) return 15;
+    if (name.includes('invoice') || name.includes('payment') || name.includes('transaction')) return 100;
+    if (name.includes('meeting') || name.includes('order') || name.includes('event')) return 75;
+    if (name.includes('client') || name.includes('customer') || name.includes('user')) return 50;
+    return 50;
   };
 
   for (const tableName of dependencyOrder) {
     const table = schema.tables.find(t => t.name === tableName);
     if (!table) continue;
 
-    const rowCount = config.rowCounts?.[tableName] ?? 
-      (tableName.toLowerCase().startsWith('ref_') ? 5 : 10);
+    const rowCount = config.rowCounts?.[tableName] ?? getDefaultRowCount(tableName);
 
     data[tableName] = generateTableData(table, rowCount, data);
   }

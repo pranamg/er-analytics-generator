@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Preview from './Preview';
+
+const API_BASE = 'http://localhost:3001/api';
 
 type Stage = {
   id: number;
@@ -8,6 +10,7 @@ type Stage = {
 };
 
 const STAGES: Stage[] = [
+  { id: 0, name: 'Archive Previous Outputs', status: 'pending' },
   { id: 1, name: 'Parse ER Diagram', status: 'pending' },
   { id: 2, name: 'Process Schema', status: 'pending' },
   { id: 3, name: 'Generate SQL', status: 'pending' },
@@ -30,6 +33,23 @@ function App() {
   const [provider, setProvider] = useState<AIProvider>('gemini');
   const [stages, setStages] = useState<Stage[]>(STAGES);
   const [isRunning, setIsRunning] = useState(false);
+  const [hasCachedSchema, setHasCachedSchema] = useState(false);
+
+  useEffect(() => {
+    // Check for cached schema on mount via HTTP API
+    const checkSchema = async () => {
+      try {
+        const response = await fetch(`${API_BASE}/check-schema`);
+        const result = await response.json();
+        console.log('Schema check result:', result);
+        setHasCachedSchema(result.hasSchema);
+      } catch (error) {
+        console.log('API not available - make sure server is running on port 3001');
+        setHasCachedSchema(false);
+      }
+    };
+    checkSchema();
+  }, []);
 
   const handleFileSelect = async () => {
     // In Electron, this would use dialog.showOpenDialog
@@ -47,9 +67,29 @@ function App() {
 
   const runPipeline = async () => {
     setIsRunning(true);
-    // Pipeline execution would go here
-    // For now, simulate progress
-    for (let i = 0; i < stages.length; i++) {
+    
+    // Stage 0: Archive previous outputs
+    setStages(prev => prev.map((s, idx) => 
+      idx === 0 ? { ...s, status: 'running' } : s
+    ));
+    
+    try {
+      if (window.electronAPI?.archiveOutputs) {
+        const archiveResult = await window.electronAPI.archiveOutputs(imagePath || null);
+        if (archiveResult.archived) {
+          console.log(`Archived ${archiveResult.filesArchived} files to ${archiveResult.archivePath}`);
+        }
+      }
+    } catch (err) {
+      console.error('Archive failed:', err);
+    }
+    
+    setStages(prev => prev.map((s, idx) => 
+      idx === 0 ? { ...s, status: 'completed' } : s
+    ));
+    
+    // Run remaining pipeline stages
+    for (let i = 1; i < stages.length; i++) {
       setStages(prev => prev.map((s, idx) => 
         idx === i ? { ...s, status: 'running' } : s
       ));
@@ -59,6 +99,48 @@ function App() {
       ));
     }
     setIsRunning(false);
+  };
+
+  const regenerateFromSchema = async () => {
+    setIsRunning(true);
+    // Reset stages 2-10 to pending, mark stage 0 and 1 as skipped/completed
+    setStages(prev => prev.map(s => ({
+      ...s,
+      status: s.id === 0 ? 'completed' : s.id === 1 ? 'completed' : 'pending'
+    })));
+
+    // Mark stages 2-10 as running sequentially for visual feedback
+    for (let i = 2; i <= 10; i++) {
+      setStages(prev => prev.map(s => s.id === i ? { ...s, status: 'running' } : s));
+    }
+
+    try {
+      const response = await fetch(`${API_BASE}/regenerate`, { method: 'POST' });
+      const result = await response.json();
+      
+      if (result.success) {
+        console.log(result.summary);
+        // Mark stages based on results
+        if (result.results) {
+          setStages(prev => prev.map(s => {
+            const stageResult = result.results?.find((r: { stage: number }) => r.stage === s.id);
+            if (stageResult) {
+              return { ...s, status: stageResult.success ? 'completed' : 'failed' };
+            }
+            return s;
+          }));
+        }
+      } else {
+        console.error('Regeneration failed:', result.error);
+        // Mark all running stages as failed
+        setStages(prev => prev.map(s => s.status === 'running' ? { ...s, status: 'failed' } : s));
+      }
+    } catch (err) {
+      console.error('Regeneration error:', err);
+      setStages(prev => prev.map(s => s.status === 'running' ? { ...s, status: 'failed' } : s));
+    } finally {
+      setIsRunning(false);
+    }
   };
 
   const getStatusColor = (status: Stage['status']) => {
@@ -172,6 +254,26 @@ function App() {
           >
             {isRunning ? 'Running Pipeline...' : 'Run Pipeline'}
           </button>
+
+          {hasCachedSchema && (
+            <button
+              onClick={regenerateFromSchema}
+              disabled={isRunning}
+              className={`mt-3 w-full py-3 rounded-lg font-medium transition-colors ${
+                isRunning
+                  ? 'bg-gray-300 cursor-not-allowed'
+                  : 'bg-green-600 hover:bg-green-700 text-white'
+              }`}
+            >
+              {isRunning ? 'Regenerating...' : 'Regenerate from Cached Schema (Skip API)'}
+            </button>
+          )}
+
+          {!hasCachedSchema && (
+            <p className="mt-3 text-sm text-gray-500 text-center">
+              No cached schema found. Run the full pipeline once to enable quick regeneration.
+            </p>
+          )}
         </div>
 
         {/* Pipeline Progress */}
